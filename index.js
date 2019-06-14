@@ -4,12 +4,7 @@ const StatsD = require('hot-shots');
 
 module.exports = function (app) {
   var plugin = {};
-  var connectionInfos = {}
   var options
-  var positionSubscriptions = {}
-  let selfContext = 'vessels.' + app.selfId
-  var statusMessage
-  var hadError = false
 
   plugin.id = "signalk-datadog";
   plugin.name = "SignalK Datadog";
@@ -36,7 +31,7 @@ module.exports = function (app) {
     path = options.path;
 
     localSubscription = {
-      "context": "vessels.self",
+      context: options.context,
       subscribe: [{
         path: path,
         period: 1 * 1000
@@ -70,7 +65,6 @@ module.exports = function (app) {
 
             if (data.type != "unknown") {
               dogstatsd.gauge(data.name, data.value);
-
             } else {
               app.debug(data);
             }
@@ -81,6 +75,10 @@ module.exports = function (app) {
 
   };
 
+  function subscription_error(err) {
+    app.error("error: " + err)
+  }
+
   plugin.stop = function () {
 
   };
@@ -88,7 +86,7 @@ module.exports = function (app) {
 
   plugin.schema = {
     type: 'object',
-    required: ['api_key', "path"],
+    required: ['api_key', "path", "context"],
     properties: {
       api_key: {
         type: 'string',
@@ -103,6 +101,11 @@ module.exports = function (app) {
         title: 'SignalK path',
         default: "*"
       },
+      context: {
+        type: 'string',
+        title: "SignalK context",
+        default: "vessels.self"
+      }
     }
   };
 
