@@ -1,0 +1,36 @@
+{
+  "author": {
+    "name": "Wouter de Bie",
+    "email": "wouter@evenflow.nl"
+  },
+  "bugs": {
+    "url": "https://github.com/wouterdebie/signalk-datadog"
+  },
+  "bundleDependencies": false,
+  "contributors": [
+    {}
+  ],
+  "dependencies": {
+    "debug": "^3.1.0",
+    "hot-shots": "^6.3.0",
+    "winston-datadog": "1.1.0",
+    "winston": "^3.2.1"
+  },
+  "deprecated": false,
+  "description": "Plugin that sends stuff to Datadog",
+  "homepage": "https://github.com/wouterdebie/signalk-datadog",
+  "keywords": [
+    "signalk-node-server-plugin"
+  ],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "signalk-datadog",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wouterdebie/signalk-datadog.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "1.0.0"
+}
