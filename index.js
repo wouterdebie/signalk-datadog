@@ -68,13 +68,25 @@ module.exports = function (app) {
       subscriptionError,
       delta => {
         delta.updates.forEach(u => {
-          var pgn = getPgn(u.source.pgn);
+          var sourceSrc, type, label, pgnSrc;
+
+          if (u.source) {
+            label = u.source.label;
+            sourceSrc = u.source.src;
+            type = u.source.type;
+            var pgn = getPgn(u.source.pgn);
+            if (pgn) {
+              pgnSrc = { pgn: pgn.PGN, id: pgn.Id, description: pgn.Description };
+            }
+          } else {
+            [label, sourceSrc] = u.$source.split('.');
+          }
 
           var src = {
-            label: u.source.label,
-            pgn: { pgn: pgn.PGN, id: pgn.Id, description: pgn.Description },
-            src: u.source.src,
-            type: u.source.type
+            label: label || '',
+            pgn: pgnSrc || {},
+            src: sourceSrc || '',
+            type: type || ''
           };
           app.debug(src);
 
