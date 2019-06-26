@@ -2,8 +2,8 @@ const winston = require('winston');
 const DatadogTransport = require('@shelf/winston-datadog-logs-transport');
 const metrics = require('datadog-metrics');
 const os = require('os');
-const pgns = require("@canboat/pgns")
-const { flow, first, isArray, isEmpty, propertyOf } = require('lodash/fp')
+const pgns = require('@canboat/pgns');
+const { isArray } = require('lodash/fp');
 
 module.exports = function (app) {
   var plugin = {};
@@ -12,86 +12,89 @@ module.exports = function (app) {
   var unsubscribes = [];
   var logger;
 
-  plugin.id = "signalk-datadog";
-  plugin.name = "SignalK Datadog";
-  plugin.description = "Plugin that sends data to Datadog";
+  plugin.id = 'signalk-datadog';
+  plugin.name = 'SignalK Datadog';
+  plugin.description = 'Plugin that sends data to Datadog';
 
   const staticKeys = [
-    "name",
-    "mmsi",
-    "uuid",
-    "url",
-    "flag",
-    "port",
-    "design.aisShipType",
-    "design.draft",
-    "design.length",
-    "design.beam",
-    "design.keel",
-    "design.airHeight",
-    "design.rigging",
-    "sensors.gps.fromCenter",
-    "sensors.gps.fromBow",
-    "navigation.speedThroughWaterReferenceType"
+    'name',
+    'mmsi',
+    'uuid',
+    'url',
+    'flag',
+    'port',
+    'design.aisShipType',
+    'design.draft',
+    'design.length',
+    'design.beam',
+    'design.keel',
+    'design.airHeight',
+    'design.rigging',
+    'sensors.gps.fromCenter',
+    'sensors.gps.fromBow',
+    'navigation.speedThroughWaterReferenceType'
   ];
 
   plugin.start = function (theOptions) {
     options = theOptions;
-    app_key = options.app_key || null
+    var appKey = options.app_key || null;
 
-    metrics.init({ apiKey: options.api_key, appKey: app_key, prefix: 'signalk.' });
+    metrics.init({ apiKey: options.api_key, appKey: appKey, prefix: 'signalk.' });
 
-    path = options.path;
+    var path = options.path;
 
     logger = winston.createLogger({
       transports: [
         new DatadogTransport({
-          apiKey: options.api_key, // Datadog API key
-          // optional metadata which will be merged with every log message
+          apiKey: options.api_key,
           metadata: {
             host: os.hostname(),
-            service: "signalk",
+            service: 'signalk'
           }
         })
       ]
     });
 
-    localSubscription = {
+    var localSubscription = {
       context: options.context,
       subscribe: [{
         path: path,
-        period: 1 * 1000
+        period: options.stream_update_interval * 1000
       }]
-    }
+    };
 
     app.subscriptionmanager.subscribe(localSubscription,
       unsubscribes,
-      subscription_error,
+      subscriptionError,
       delta => {
         delta.updates.forEach(u => {
           var pgn = getPgn(u.source.pgn);
-          var src = u.source
-          src["pgn_data"] = { id: pgn.Id, description: pgn.Description }
 
+          var src = {
+            label: u.source.label,
+            pgn: { pgn: pgn.PGN, id: pgn.Id, description: pgn.Description },
+            src: u.source.src,
+            type: u.source.type
+          };
+          app.debug(src);
+
+          var tags = [
+            'src.label:' + src.label,
+            'pgn.pgn:' + src.pgn.pgn,
+            'pgn.id:' + src.pgn.id,
+            'src:' + src.src,
+            'type:' + src.type
+          ];
+
+          app.debug(tags);
           u.values.forEach(v => {
-            var type = (function (value) {
-              switch (typeof value) {
-                case "number":
-                  return "gauge"
-                case "string":
-                  return "string"
-                default:
-                  return typeof value;
-              }
-            })(v.value);
+            var data = { name: v.path, value: v.value };
 
-            data = { name: v.path, value: v.value };
-
-            if (type == "gauge") {
-              metrics.gauge(data.name, data.value);
+            if (typeof v.value === 'number') {
+              metrics.gauge(data.name, data.value, tags);
             } else {
               if (!staticKeys.includes(data.name)) {
-                logger.info(data, { ddsource: "stream", src: src });
+                logger.info(data, { ddsource: 'stream', src: src });
               }
             }
           });
@@ -99,16 +102,16 @@ module.exports = function (app) {
       }
     );
 
-    sendStatic()
+    sendStatic();
     staticTimer = setInterval(() => {
-      sendStatic()
-    }, 10000)
+      sendStatic();
+    }, options.static_update_interval * 1000);
   };
 
-  function sendStatic() {
-    app.debug("Sending static data");
+  function sendStatic () {
+    app.debug('Sending static data');
     var values = [{
-      name: "signalk-server-node.version",
+      name: 'signalk-server-node.version',
       value: app.config.version
     }];
 
@@ -116,86 +119,87 @@ module.exports = function (app) {
       var val = app.getSelfPath(path);
       if (val) {
         if (val.value) {
-          val = val.value
+          val = val.value;
         }
         values.push({ name: path, value: val });
       }
     });
 
     values.forEach(function (value) {
-      logger.info(value, { ddsource: "static" });
+      logger.info(value, { ddsource: 'static' });
     });
   }
 
-  function subscription_error(err) {
-    app.error("error: " + err)
+  function subscriptionError (err) {
+    app.error('error: ' + err);
   }
 
   const getPgn = function (pgn) {
-    if (organizedPGNs[pgn]) {
-      return organizedPGNs[pgn][0]
-    } else {
-      app.debug("No PGN for " + pgn);
-      return {}
-    }
-  }
+    return organizedPGNs[pgn][0];
+  };
 
   plugin.stop = function () {
-    app.debug("STOP");
+    app.debug('STOP');
     unsubscribes.forEach(f => f());
     unsubscribes = [];
     clearInterval(staticTimer);
     staticTimer = null;
   };
 
-
   plugin.schema = {
     type: 'object',
-    required: ['api_key', "path", "context"],
+    required: ['api_key', 'path', 'context', 'static_update_interval', 'stream_update_interval'],
     properties: {
       api_key: {
         type: 'string',
-        title: 'Datadog API key',
+        title: 'Datadog API key'
       },
       app_key: {
         type: 'string',
-        title: 'Datadog APP key (optional)',
+        title: 'Datadog APP key (optional)'
       },
       path: {
         type: 'string',
         title: 'SignalK path',
-        default: "*"
+        default: '*'
       },
       context: {
         type: 'string',
-        title: "SignalK context",
-        default: "vessels.self"
+        title: 'SignalK context',
+        default: 'vessels.self'
+      },
+      static_update_interval: {
+        type: 'int',
+        title: 'Static data update interval (s)',
+        default: '60'
+      },
+      stream_update_interval: {
+        type: 'int',
+        title: 'Stream data update interval (s)',
+        default: '5'
       }
     }
   };
 
   return plugin;
-
 };
 
-function organizePGNs() {
-  const res = {}
+function organizePGNs () {
+  const res = {};
   pgns.PGNs.forEach(pgn => {
     if (!res[pgn.PGN]) {
-      res[pgn.PGN] = []
+      res[pgn.PGN] = [];
     }
-    res[pgn.PGN].push(pgn)
-    pgn.Fields = isArray(pgn.Fields) ? pgn.Fields : (pgn.Fields ? [pgn.Fields.Field] : [])
-    var reservedCount = 1
+    res[pgn.PGN].push(pgn);
+    pgn.Fields = isArray(pgn.Fields) ? pgn.Fields : (pgn.Fields ? [pgn.Fields.Field] : []);
+    var reservedCount = 1;
     pgn.Fields.forEach((field) => {
       if (field.Name === 'Reserved') {
-        field.Name = `Reserved${reservedCount++}`
+        field.Name = `Reserved${reservedCount++}`;
       }
-    })
-  })
-  return res
+    });
+  });
+  return res;
 }
 
-const organizedPGNs = organizePGNs()
-
-
+const organizedPGNs = organizePGNs();
