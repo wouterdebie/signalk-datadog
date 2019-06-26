@@ -108,7 +108,7 @@ module.exports = function (app) {
     }, options.static_update_interval * 1000);
   };
 
-  function sendStatic () {
+  function sendStatic() {
     app.debug('Sending static data');
     var values = [{
       name: 'signalk-server-node.version',
@@ -130,7 +130,7 @@ module.exports = function (app) {
     });
   }
 
-  function subscriptionError (err) {
+  function subscriptionError(err) {
     app.error('error: ' + err);
   }
 
@@ -169,14 +169,14 @@ module.exports = function (app) {
         default: 'vessels.self'
       },
       static_update_interval: {
-        type: 'int',
+        type: 'number',
         title: 'Static data update interval (s)',
-        default: '60'
+        default: 60
       },
       stream_update_interval: {
-        type: 'int',
+        type: 'number',
         title: 'Stream data update interval (s)',
-        default: '5'
+        default: 5
       }
     }
   };
@@ -184,7 +184,7 @@ module.exports = function (app) {
   return plugin;
 };
 
-function organizePGNs () {
+function organizePGNs() {
   const res = {};
   pgns.PGNs.forEach(pgn => {
     if (!res[pgn.PGN]) {
