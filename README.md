@@ -1,5 +1,5 @@
 # signalk-datadog
-SignalK Node Server Plugin that sends data to Datadog
+SignalK Node Server Plugin that sends data to [Datadog](https://datadoghq.com)
 
 Metrics data (basically numbers) are sent as metrics. The rest (geo information or other strings)
 are sent as logs.
