@@ -24,3 +24,7 @@ treated as static and sent at a different interval than stream data:
     'sensors.gps.fromBow',
     'navigation.speedThroughWaterReferenceType'
 ```
+
+## Show case
+![dashboard](https://github.com/wouterdebie/signalk-datadog/raw/master/screenshot.png "Datadog metrics dashboard")
+![logs](https://github.com/wouterdebie/signalk-datadog/raw/master/screenshot2.png "Filtered logs")
