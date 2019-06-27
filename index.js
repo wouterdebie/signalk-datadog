@@ -70,7 +70,7 @@ module.exports = function (app) {
         delta.updates.forEach(u => {
           var sourceSrc, type, label, pgnSrc;
 
-          if (u.source) {
+          if (u.source && u.source.pgn) {
             label = u.source.label;
             sourceSrc = u.source.src;
             type = u.source.type;
