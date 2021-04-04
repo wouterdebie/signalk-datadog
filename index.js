@@ -75,7 +75,7 @@ module.exports = function (app) {
             sourceSrc = u.source.src;
             type = u.source.type;
             var pgn = getPgn(u.source.pgn);
-            if (pgn) {
+            if (pgn && pgn !== undefined) {
               pgnSrc = { pgn: pgn.PGN, id: pgn.Id, description: pgn.Description };
             }
           } else {
@@ -104,6 +104,9 @@ module.exports = function (app) {
 
             if (typeof v.value === 'number') {
               metrics.gauge(data.name, data.value, tags);
+            } else if (v.path == 'navigation.position') {
+              metrics.gauge(data.name + '.latitude', data.value['latitude'], tags);
+              metrics.gauge(data.name + '.longitude', data.value['longitude'], tags);
             } else {
               if (!staticKeys.includes(data.name)) {
                 logger.info(data, { ddsource: 'stream', src: src });
@@ -147,7 +150,11 @@ module.exports = function (app) {
   }
 
   const getPgn = function (pgn) {
-    return organizedPGNs[pgn][0];
+    if (organizedPGNs[pgn] === undefined) {
+      app.debug('ignoring undefined pgn: ' + pgn);
+    } else {
+      return organizedPGNs[pgn][0];
+    }
   };
 
   plugin.stop = function () {
